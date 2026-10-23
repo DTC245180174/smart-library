@@ -1,0 +1,22 @@
+{
+  "borrowHomeDays": 14,
+  "borrowLibraryDays": 7,
+  "maxBorrowBooks": 3,
+  "maxReservations": 3,
+  "finePerDay": 2000,
+  "gracePeriodDays": 0,
+  "autoLockAfterDays": 3,
+  "lostBookFine": 200000,
+  "vnpayTmnCode": "",
+  "vnpayHashSecret": "",
+  "vnpayAccountNumber": "0987654321",
+  "vnpayBankName": "Ngân hàng TMCP Quân Đội (MBBank)",
+  "vnpayBankBin": "970422",
+  "vnpayAccountName": "THU VIEN SMARTLIB",
+  "vnpayTimeoutMinutes": 15,
+  "libraryName": "SmartLib - Thư viện Thông minh",
+  "libraryAddress": "Hà Nội, Việt Nam",
+  "libraryPhone": "0987 654 321",
+  "libraryEmail": "support@smartlib.edu.vn",
+  "libraryHours": "07:30 - 17:30 (Thứ 2 - Thứ 7)"
+}
