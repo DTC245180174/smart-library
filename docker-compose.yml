@@ -60,6 +60,12 @@ services:
       - backend_net
       - frontend_net
       - monitoring_net
+    cap_drop:
+      - ALL
+    cap_add:
+      - CHOWN
+      - SETUID
+      - SETGID
 
   # -------------------------------------------------------------
   # DỊCH VỤ 3: FRONTEND REACTJS (BUILD TĨNH VÀ SERVE BẰNG NGINX)
@@ -80,10 +86,17 @@ services:
       - ./nginx/certs:/etc/nginx/certs:ro
     depends_on:
       - backend
-    security_opt:
-      - no-new-privileges:true
     networks:
       - frontend_net
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    cap_add:
+      - NET_BIND_SERVICE # Cho phép Nginx bind cổng 80 và 443
+      - CHOWN
+      - SETUID
+      - SETGID
 
   # -------------------------------------------------------------
   # DỊCH VỤ 4: QUẢN TRỊ DATABASE PHPMYADMIN
@@ -119,6 +132,7 @@ services:
       - "9090:9090"
     volumes:
       - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ./prometheus/alert.rules.yml:/etc/prometheus/alert.rules.yml:ro
       - prometheus_data:/prometheus
     command:
       - '--config.file=/etc/prometheus/prometheus.yml'
@@ -184,7 +198,7 @@ services:
     ports:
       - "9113:9113"
     command:
-      - -nginx.scrape-uri=http://smartlib_frontend:80/stub_status
+      - -nginx.scrape-uri=http://frontend:80/stub_status
     depends_on:
       - frontend
     security_opt:
@@ -215,6 +229,41 @@ services:
       - prometheus
     security_opt:
       - no-new-privileges:true
+    networks:
+      - monitoring_net
+  # -------------------------------------------------------------
+  # DỊCH VỤ 10: LOKI SERVER (LƯU TRỮ VÀ LẬP CHỈ MỤC LOG TẬP TRUNG)
+  # -------------------------------------------------------------
+  loki:
+    image: grafana/loki:2.9.4
+    container_name: smartlib_loki
+    restart: unless-stopped
+    ports:
+      - "3100:3100"
+    volumes:
+      - ./loki/loki-config.yml:/etc/loki/local-config.yaml:ro
+      - loki_data:/loki
+    command: -config.file=/etc/loki/local-config.yaml
+    security_opt:
+      - no-new-privileges:true
+    networks:
+      - monitoring_net
+
+  # -------------------------------------------------------------
+  # DỊCH VỤ 11: PROMTAIL (AGENT TỰ ĐỘNG THU THẬP LOG DOCKER)
+  # -------------------------------------------------------------
+  promtail:
+    image: grafana/promtail:2.9.4
+    container_name: smartlib_promtail
+    restart: unless-stopped
+    user: "0:0"  # Cần quyền đọc Docker Socket và thư mục log hệ thống
+    volumes:
+      - ./promtail/promtail-config.yml:/etc/promtail/config.yml:ro
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - /var/lib/docker/containers:/var/lib/docker/containers:ro
+    command: -config.file=/etc/promtail/config.yml
+    depends_on:
+      - loki
     networks:
       - monitoring_net
 
@@ -248,4 +297,8 @@ volumes:
 
   grafana_data:
     name: smartlib_grafana_data
+    driver: local
+
+  loki_data:
+    name: smartlib_loki_data
     driver: local

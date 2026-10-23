@@ -7,3 +7,10 @@ datasources:
     url: http://smartlib_prometheus:9090
     isDefault: true
     editable: true
+
+  - name: Loki
+    type: loki
+    access: proxy
+    url: http://smartlib_loki:3100
+    isDefault: false
+    editable: true

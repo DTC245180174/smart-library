@@ -124,10 +124,13 @@ def login(req: LoginRequest):
             user = next((u for u in users if u.get("username") == "reader"), None)
         elif req.username in ["librarian", "thuthu"] and req.password == "123":
             user = next((u for u in users if u.get("username") == "librarian"), None)
-
+        
     if not user:
+        # 👉 THÊM DÒNG NÀY: Ghi log thất bại để LogQL bắt được từ khóa AUTH và failed
+        print(f"[AUTH] Dang nhap that bai: username='{req.username}' sai mat khau | failed", flush=True)
         raise HTTPException(status_code=401, detail="Tên đăng nhập hoặc mật khẩu không chính xác!")
-
+    # 👉 THÊM DÒNG NÀY: Ghi log thành công
+    print(f"[AUTH] Dang nhap thanh cong: username='{username}', role='{user.get('role')}'", flush=True)
     # 🔒 Kiểm tra nếu tài khoản đang chờ Quản trị viên duyệt giao dịch nộp phạt VNPay
     pending_fines = [
         f for f in db.get("fines", [])
@@ -168,7 +171,6 @@ def login(req: LoginRequest):
                 "fine": first_fine
             }
         )
-
 
     user_data = {
         "id": user.get("id"),

@@ -7,6 +7,9 @@ global:
   scrape_interval: 15s      # Định kỳ cào số liệu 15 giây/lần
   evaluation_interval: 15s  # Đánh giá cảnh báo 15 giây/lần
 
+rule_files:
+  - "/etc/prometheus/alert.rules.yml"
+
 scrape_configs:
   # 1. Tự giám sát máy chủ Prometheus
   - job_name: 'prometheus'
