@@ -62,7 +62,7 @@ CREATE TABLE borrow_records (
     user_id INT NOT NULL,
     book_id INT NOT NULL,
     borrow_date DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    due_date DATETIME NOT NULL,
+    due_date DATETIME NULL DEFAULT NULL,
     return_date DATETIME NULL,
     actual_return_date DATETIME NULL,
     borrow_type VARCHAR(50) NOT NULL DEFAULT 'Mượn về nhà',
@@ -105,8 +105,8 @@ CREATE TABLE fines (
     record_id INT NOT NULL,
     user_id INT NOT NULL,
     book_id INT NOT NULL,
-    due_date DATETIME NOT NULL,
-    actual_return_date DATETIME NOT NULL,
+    due_date DATETIME NULL DEFAULT NULL,
+    actual_return_date DATETIME NULL DEFAULT NULL,
     fine_amount DECIMAL(12,2) NOT NULL DEFAULT 0.00,
     status VARCHAR(50) NOT NULL DEFAULT 'Chưa nộp',
     payment_method VARCHAR(50) NOT NULL DEFAULT 'Tiền mặt',
@@ -144,7 +144,7 @@ INSERT INTO users (id, username, password_hash, full_name, role, email, phone, a
 VALUES
   (1, 'admin', 'a665a45920422f9d417e4867efdc4fb8a04a1f3fff1fa07e998e86f7f7a27ae3', 'Quản trị viên', 'Admin', 'admin@smartlib.edu.vn', '0987 654 321', 'Phòng Quản lý Thư viện, ĐHQG Hà Nội', '1990-01-01', 1, 0, NULL),
   (2, 'reader', 'a665a45920422f9d417e4867efdc4fb8a04a1f3fff1fa07e998e86f7f7a27ae3', 'Trần Thị Mai', 'Reader', 'mai.tran@smartlib.edu.vn', '0901 234 567', 'Khu KTX Sinh viên Mễ Trì, Thanh Xuân, Hà Nội', '2002-10-20', 1, 0, NULL),
-  (3, 'librarian', '123', 'Thủ thư Nguyễn Văn Hưng', 'Librarian', 'librarian@smartlib.edu.vn', '0912 888 999', 'Bộ phận Nghiệp vụ Thư viện, ĐHQG Hà Nội', '1995-05-12', 1, 0, NULL);
+  (3, 'librarian', 'a665a45920422f9d417e4867efdc4fb8a04a1f3fff1fa07e998e86f7f7a27ae3', 'Thủ thư Nguyễn Văn Hưng', 'Librarian', 'librarian@smartlib.edu.vn', '0912 888 999', 'Bộ phận Nghiệp vụ Thư viện, ĐHQG Hà Nội', '1995-05-12', 1, 0, NULL);
 
 -- =====================================================================
 -- DỮ LIỆU SEED KHỞI TẠO: 2. KHO SÁCH (books - 60 ĐẦU SÁCH)

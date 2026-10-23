@@ -23,6 +23,8 @@ services:
       timeout: 5s
       retries: 10
       start_period: 15s
+    security_opt:
+      - no-new-privileges:true
     networks:
       - backend_net
 
@@ -52,9 +54,12 @@ services:
     depends_on:
       mysql_db:
         condition: service_healthy
+    security_opt:
+      - no-new-privileges:true
     networks:
       - backend_net
       - frontend_net
+      - monitoring_net
 
   # -------------------------------------------------------------
   # DỊCH VỤ 3: FRONTEND REACTJS (BUILD TĨNH VÀ SERVE BẰNG NGINX)
@@ -66,7 +71,7 @@ services:
     container_name: smartlib_frontend
     restart: unless-stopped
     ports:
-      # Mở cả cổng 80 chuẩn HTTP và cổng 443 để người dùng truy cập thuận tiện
+      # Mở cả cổng 80 chuẩn HTTP và cổng 443 HTTPS an toàn
       - "80:80"
       - "443:443"
     volumes:
@@ -75,10 +80,13 @@ services:
       - ./nginx/certs:/etc/nginx/certs:ro
     depends_on:
       - backend
+    security_opt:
+      - no-new-privileges:true
     networks:
       - frontend_net
+
   # -------------------------------------------------------------
-  # DỊCH VỤ QUẢN TRỊ DATABASE: PHPMYADMIN
+  # DỊCH VỤ 4: QUẢN TRỊ DATABASE PHPMYADMIN
   # -------------------------------------------------------------
   phpmyadmin:
     image: phpmyadmin/phpmyadmin:latest
@@ -95,21 +103,149 @@ services:
     depends_on:
       mysql_db:
         condition: service_healthy
+    security_opt:
+      - no-new-privileges:true
     networks:
       - backend_net
+
+  # -------------------------------------------------------------
+  # DỊCH VỤ 5: PROMETHEUS SERVER (GIÁM SÁT METRICS CHUỖI THỜI GIAN)
+  # -------------------------------------------------------------
+  prometheus:
+    image: prom/prometheus:v2.54.1
+    container_name: smartlib_prometheus
+    restart: unless-stopped
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus_data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.console.libraries=/usr/share/prometheus/console_libraries'
+      - '--web.console.templates=/usr/share/prometheus/consoles'
+    security_opt:
+      - no-new-privileges:true
+    networks:
+      - monitoring_net
+      - backend_net
+
+  # -------------------------------------------------------------
+  # DỊCH VỤ 6: CADVISOR (GIÁM SÁT TÀI NGUYÊN CONTAINER)
+  # -------------------------------------------------------------
+  cadvisor:
+    image: gcr.io/cadvisor/cadvisor:v0.49.1
+    container_name: smartlib_cadvisor
+    restart: unless-stopped
+    ports:
+      - "8085:8080"
+    volumes:
+      - /:/rootfs:ro
+      - /var/run:/var/run:ro
+      - /sys:/sys:ro
+      - /var/lib/docker/:/var/lib/docker:ro
+      - /dev/disk/:/dev/disk:ro
+    privileged: true
+    devices:
+      - /dev/kmsg
+    networks:
+      - monitoring_net
+
+  # -------------------------------------------------------------
+  # DỊCH VỤ 7: MYSQLD EXPORTER (GIÁM SÁT CƠ SỞ DỮ LIỆU MYSQL)
+  # -------------------------------------------------------------
+  mysqld_exporter:
+    image: prom/mysqld-exporter:v0.15.1
+    container_name: smartlib_mysqld_exporter
+    restart: unless-stopped
+    ports:
+      - "9104:9104"
+    volumes:
+      - ./mysqld_exporter/.my.cnf:/etc/.my.cnf:ro
+    command:
+      - '--config.my-cnf=/etc/.my.cnf'
+    depends_on:
+      mysql_db:
+        condition: service_healthy
+    security_opt:
+      - no-new-privileges:true
+    networks:
+      - backend_net
+      - monitoring_net
+
+  # -------------------------------------------------------------
+  # DỊCH VỤ 8: NGINX PROMETHEUS EXPORTER (GIÁM SÁT MÁY CHỦ WEB NGINX)
+  # -------------------------------------------------------------
+  nginx_exporter:
+    image: nginx/nginx-prometheus-exporter:1.3.0
+    container_name: smartlib_nginx_exporter
+    restart: unless-stopped
+    ports:
+      - "9113:9113"
+    command:
+      - -nginx.scrape-uri=http://smartlib_frontend:80/stub_status
+    depends_on:
+      - frontend
+    security_opt:
+      - no-new-privileges:true
+    networks:
+      - frontend_net
+      - monitoring_net
+
+  # -------------------------------------------------------------
+  # DỊCH VỤ 9: GRAFANA SERVER (TRỰC QUAN HÓA DASHBOARD)
+  # -------------------------------------------------------------
+  grafana:
+    image: grafana/grafana:11.2.0
+    container_name: smartlib_grafana
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      - GF_SECURITY_ADMIN_USER=admin
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+      - GF_USERS_ALLOW_SIGN_UP=false
+    volumes:
+      - ./grafana/provisioning/datasources:/etc/grafana/provisioning/datasources:ro
+      - ./grafana/provisioning/dashboards:/etc/grafana/provisioning/dashboards:ro
+      - ./grafana/dashboards:/var/lib/grafana/dashboards:ro
+      - grafana_data:/var/lib/grafana
+    depends_on:
+      - prometheus
+    security_opt:
+      - no-new-privileges:true
+    networks:
+      - monitoring_net
+
 # -------------------------------------------------------------
-# CẤU HÌNH NETWORKS VÀ VOLUMES
+# CẤU HÌNH NETWORKS (3 VÙNG MẠNG CÔ LẬP THEO BẢO MẬT BAREM)
 # -------------------------------------------------------------
 networks:
-  backend_net:
-    name: backend_net
-    driver: bridge
-
   frontend_net:
     name: frontend_net
     driver: bridge
 
+  backend_net:
+    name: backend_net
+    driver: bridge
+
+  monitoring_net:
+    name: monitoring_net
+    driver: bridge
+
+# -------------------------------------------------------------
+# CẤU HÌNH VOLUMES (LƯU TRỮ BỀN VỮNG)
+# -------------------------------------------------------------
 volumes:
   mysql_data:
     name: smartlib_mysql_data
+    driver: local
+
+  prometheus_data:
+    name: smartlib_prometheus_data
+    driver: local
+
+  grafana_data:
+    name: smartlib_grafana_data
     driver: local
